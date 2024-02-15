@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-import User from "models/user.model";
+import User from "@/models/user.model";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
@@ -45,22 +45,22 @@ export const create = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!email || !password) {
+  if (!username || !password) {
     return res
       .status(400)
       .json({ status: "An error occured", message: "Incomplete Credentials" });
   }
 
-  const user = await User.findOne({ email }).select("+password");
+  const user = await User.findOne({ username }).select("+password");
 
   // check if password is correct
   const match = await bcrypt.compare(password, user.password);
   if (!user || !match) {
     return res.status(400).json({
       status: "An error occured",
-      message: "Email or password is incorrect",
+      message: "Username or password is incorrect",
     });
   }
 
@@ -154,9 +154,10 @@ export const protect = async (
     await handleDecoded(decoded);
   } catch (error) {
     //  if error in verifying access token
+    const castedError = error as Error;
     if (
-      error.name === "JsonWebTokenError" ||
-      (error.name === "TokenExpiredError" && refreshToken)
+      castedError.name === "JsonWebTokenError" ||
+      (castedError.name === "TokenExpiredError" && refreshToken)
     ) {
       try {
         // verify refreshToken
