@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import MovieModel from "@/models/movie.model";
+import MovieModel from "../models/movie.model";
 
 export const getMovies = async (req: Request, res: Response) => {
   try {
