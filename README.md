@@ -1,8 +1,7 @@
 
-# Cinemax Backend
+# Brillo Connectz Backend
 
-Cinemax is an innovative and user-friendly platform designed to enhance the movie-going experience by providing a seamless and convenient way for users to purchase movie tickets. 
-
+This is my backend solution to brillo connectz full stack developer assessment test. The task is to build a mobile friendly web application to record, network and find like-minded sports interested people. The web application should be developed using React.js and Node.js with or without a framework of your choice.
 
 ## Tech Stack
 
