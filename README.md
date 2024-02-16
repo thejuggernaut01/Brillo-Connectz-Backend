@@ -18,13 +18,13 @@ This is my backend solution to brillo connectz full stack developer assessment t
 Clone the project
 
 ```bash
-  git clone https://github.com/thejuggernaut01/cinemax-backend.git
+  git clone https://github.com/thejuggernaut01/Brillo-Connectz-Backend.git
 ```
 
 Go to the project directory
 
 ```bash
-  cd cinemax-backend
+  cd brillo-backend
 ```
 
 Install dependencies
