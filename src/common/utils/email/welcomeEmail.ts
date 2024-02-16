@@ -3,7 +3,7 @@ import { welcomeEmailTemplate } from "./../../templates/welcomeEmail";
 
 const welcomeEmail = async (email: string) => {
   const response = await smtpexpressClient.sendApi.sendMail({
-    subject: "A message from the express",
+    subject: "Welcome to Brillo Connectz Football",
     message: welcomeEmailTemplate(email),
     sender: {
       name: "Brillo Football",

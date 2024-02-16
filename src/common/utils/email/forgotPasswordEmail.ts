@@ -2,10 +2,14 @@ import { Response } from "express";
 import crypto from "crypto";
 
 import { smtpexpressClient } from "../../config/emailConfig";
-import { verifyEmailTemplate } from "../../templates/verifyEmail";
+import { forgotPasswordEmailTemplate } from "../../templates/forgotPasswordEmail";
 import User from "../../../models/user.model";
 
-const verificationEmail = async (email: string, res: Response) => {
+const forgotPasswordEmail = async (
+  email: string,
+  redirectUrl: string,
+  res: Response
+) => {
   // generate verification token and save user to the database with isVerified set to false
   crypto.randomBytes(32, async (err: Error, buffer: any) => {
     if (err) {
@@ -29,8 +33,8 @@ const verificationEmail = async (email: string, res: Response) => {
     );
 
     const response = await smtpexpressClient.sendApi.sendMail({
-      subject: "Verify your account on Brillo Connectz Football",
-      message: verifyEmailTemplate(token),
+      subject: "Password Reset - Brillo Connectz Football",
+      message: forgotPasswordEmailTemplate(token, redirectUrl),
       sender: {
         name: "Brillo Football",
         email: process.env.SMTP_SENDER_ADDRESS,
@@ -45,4 +49,4 @@ const verificationEmail = async (email: string, res: Response) => {
   });
 };
 
-export default verificationEmail;
+export default forgotPasswordEmail;

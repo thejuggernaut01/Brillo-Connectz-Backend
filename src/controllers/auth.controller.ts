@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.model";
 import verificationEmail from "../common/utils/email/verificationEmail";
 import welcomeEmail from "../common/utils/email/welcomeEmail";
+import forgotPasswordEmail from "../common/utils/email/forgotPasswordEmail";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
@@ -64,10 +65,8 @@ export const create = async (req: Request, res: Response) => {
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
-  // extract token from query
-  const token = req.query.token;
+  const { token } = req.body;
 
-  // check if token doesn't exist
   if (!token) {
     return res.status(400).json({
       status: "Error",
@@ -110,6 +109,43 @@ export const verifyEmail = async (req: Request, res: Response) => {
   }
 };
 
+export const resendEmail = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      return res.status(400).json({
+        status: "Error",
+        message: "Unauthorized",
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    // check if user
+    if (user.isVerified) {
+      return res.status(400).json({
+        status: "An error occured",
+        message: "User account has already been verified!",
+      });
+    }
+
+    // send verification email
+    await verificationEmail(email, res);
+
+    return res.status(200).json({
+      status: "Successful",
+      message: "New verification mail has been sent",
+    });
+  } catch (error) {
+    return res.status(400).json({
+      status: "Error",
+      message: "Email verification link is invalid or has expired.",
+      error,
+    });
+  }
+};
+
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
@@ -126,12 +162,10 @@ export const login = async (req: Request, res: Response) => {
   if (!user.isVerified) {
     await verificationEmail(user.email, res);
 
-    return res
-      .status(400)
-      .json({
-        status: "An error occured",
-        message: "User isn't verified, check email for verification link",
-      });
+    return res.status(400).json({
+      status: "An error occured",
+      message: "User isn't verified, check email for verification link",
+    });
   }
 
   // if account is verified
@@ -179,6 +213,73 @@ export const login = async (req: Request, res: Response) => {
   const { password: _, ...rest } = user.toObject();
 
   return res.status(200).json({ message: "Login successfully!", data: rest });
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  const { email, redirectUrl } = req.body;
+
+  try {
+    if (!email || !redirectUrl) {
+      return res.status(400).json({
+        status: "Error",
+        message: "Incomplete credentials!",
+      });
+    }
+
+    // send forgot password email
+    await forgotPasswordEmail(email, redirectUrl, res);
+
+    return res.status(200).json({
+      status: "Successful",
+      message: "Forgot password mail has been sent",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "Error",
+      message: "An error occured.",
+      error,
+    });
+  }
+};
+
+export const updatePassword = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      status: "An error occured",
+      message: "Incomplete Credentials",
+    });
+  }
+
+  try {
+    // fetch user data from db
+    const user = await User.findOne({ email });
+
+    // check if user doesn't exist
+    if (!user) {
+      return res.status(400).json({
+        status: "An error occured",
+        message: "User doesn't exist!",
+      });
+    }
+
+    // hash user password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // update password field
+    await User.findOneAndUpdate({ email }, { password: hashedPassword });
+
+    return res.status(200).json({
+      status: "Successful",
+      message: "Password updated successfully!",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "Error",
+      message: "Internal server error",
+    });
+  }
 };
 
 export const protect = async (
