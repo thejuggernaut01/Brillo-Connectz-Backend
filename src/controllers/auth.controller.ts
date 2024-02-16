@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -42,31 +41,18 @@ export const create = async (req: Request, res: Response) => {
     // hash user password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // generate verification token and save user to the database with isVerified set to false
-    crypto.randomBytes(32, async (err: Error, buffer: any) => {
-      if (err) {
-        return res.status(400).json({
-          status: "Error",
-          message: "An error occured",
-        });
-      }
+    // create user
+    await User.create({
+      email,
+      phoneNumber,
+      password: hashedPassword,
+    });
 
-      // convert the randomBytes buffer to hex string
-      const token = buffer.toString("hex");
+    // send verification email
+    await verificationEmail(email, res);
 
-      // create user
-      await User.create({
-        email,
-        phoneNumber,
-        password: hashedPassword,
-      });
-
-      // send verification email
-      await verificationEmail(email, token);
-
-      return res.status(201).json({
-        message: "Your account was successfully created!",
-      });
+    return res.status(201).json({
+      message: "Your account was successfully created!",
     });
   } catch (error) {
     return res.status(500).json({
@@ -78,8 +64,10 @@ export const create = async (req: Request, res: Response) => {
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
+  // extract token from query
   const token = req.query.token;
 
+  // check if token doesn't exist
   if (!token) {
     return res.status(400).json({
       status: "Error",
@@ -88,6 +76,10 @@ export const verifyEmail = async (req: Request, res: Response) => {
   }
 
   try {
+    // find user if the verificationToken matches with the one in db
+    // and if verificationEmailExpiration is less than 30 minutes
+
+    // if all conditions are true, update the db
     const user = await User.findOneAndUpdate(
       {
         verificationToken: token,
@@ -101,8 +93,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
       { returnOriginal: false }
     );
 
-    console.log(user);
-
+    // send welcome mail
     await welcomeEmail(user?.email);
 
     return res.status(200).json({
@@ -120,22 +111,36 @@ export const verifyEmail = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  if (!username || !password) {
+  if (!email || !password) {
     return res
       .status(400)
       .json({ status: "An error occured", message: "Incomplete Credentials" });
   }
 
-  const user = await User.findOne({ username }).select("+password");
+  const user = await User.findOne({ email }).select("+password");
 
-  // check if password is correct
+  // check if user tries to login with an unverified account
+  // send new verification mail
+  if (!user.isVerified) {
+    await verificationEmail(user.email, res);
+
+    return res
+      .status(400)
+      .json({
+        status: "An error occured",
+        message: "User isn't verified, check email for verification link",
+      });
+  }
+
+  // if account is verified
+  // check if the password is correct
   const match = await bcrypt.compare(password, user.password);
   if (!user || !match) {
     return res.status(400).json({
       status: "An error occured",
-      message: "Username or password is incorrect",
+      message: "Email or password is incorrect",
     });
   }
 
