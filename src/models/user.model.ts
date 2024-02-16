@@ -18,6 +18,9 @@ const UserSchema = new mongoose.Schema(
       select: false,
     },
     refreshToken: { type: String, select: false },
+    isVerified: { type: Boolean },
+    verificationEmailExpiration: { type: Date, select: false },
+    verificationToken: { type: String, select: false },
   },
   { timestamps: true }
 );

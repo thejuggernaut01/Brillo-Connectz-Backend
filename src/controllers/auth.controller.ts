@@ -1,8 +1,12 @@
 import { Request, Response, NextFunction } from "express";
+
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import User from "../models/user.model";
+import verificationEmail from "../common/utils/email/verificationEmail";
+import welcomeEmail from "../common/utils/email/welcomeEmail";
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
@@ -15,33 +19,104 @@ type DecodedType = {
 };
 
 export const create = async (req: Request, res: Response) => {
-  const { email, phoneNumber, password } = req.body;
+  try {
+    const { email, phoneNumber, password } = req.body;
 
-  if (!email || !phoneNumber || !password) {
-    return res
-      .status(400)
-      .json({ status: "An error occured", message: "Incomplete Credentials" });
+    if (!email || !phoneNumber || !password) {
+      return res.status(400).json({
+        status: "An error occured",
+        message: "Incomplete Credentials",
+      });
+    }
+
+    // If email already exists
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(400).json({
+        status: "An error occured",
+        message: "User already exists!",
+      });
+    }
+
+    // hash user password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // generate verification token and save user to the database with isVerified set to false
+    crypto.randomBytes(32, async (err: Error, buffer: any) => {
+      if (err) {
+        return res.status(400).json({
+          status: "Error",
+          message: "An error occured",
+        });
+      }
+
+      // convert the randomBytes buffer to hex string
+      const token = buffer.toString("hex");
+
+      // create user
+      await User.create({
+        email,
+        phoneNumber,
+        password: hashedPassword,
+      });
+
+      // send verification email
+      await verificationEmail(email, token);
+
+      return res.status(201).json({
+        message: "Your account was successfully created!",
+      });
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "Error",
+      message: "Internal server error",
+      error,
+    });
+  }
+};
+
+export const verifyEmail = async (req: Request, res: Response) => {
+  const token = req.query.token;
+
+  if (!token) {
+    return res.status(400).json({
+      status: "Error",
+      message: "Unauthorized",
+    });
   }
 
-  // If email already exists
-  const existingUser = await User.findOne({ email });
+  try {
+    const user = await User.findOneAndUpdate(
+      {
+        verificationToken: token,
+        verificationEmailExpiration: { $gt: Date.now() },
+      },
+      {
+        isVerified: true,
+        verificationToken: "",
+        verificationEmailExpiration: "",
+      },
+      { returnOriginal: false }
+    );
 
-  if (existingUser) {
-    return res
-      .status(400)
-      .json({ status: "An error occured", message: "Email is already in use" });
+    console.log(user);
+
+    await welcomeEmail(user?.email);
+
+    return res.status(200).json({
+      status: "Success",
+      message: "User account has been verified.",
+      data: user,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      status: "Error",
+      message: "Email verification link is invalid or has expired.",
+      error,
+    });
   }
-
-  const hashedPassword = await bcrypt.hash(password, 12);
-  await User.create({
-    email,
-    phoneNumber,
-    password: hashedPassword,
-  });
-
-  return res.status(201).json({
-    message: "Your account was successfully created!",
-  });
 };
 
 export const login = async (req: Request, res: Response) => {
