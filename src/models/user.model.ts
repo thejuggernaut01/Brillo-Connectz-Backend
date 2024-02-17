@@ -21,6 +21,8 @@ const UserSchema = new mongoose.Schema(
     isVerified: { type: Boolean },
     verificationEmailExpiration: { type: Date, select: false },
     verificationToken: { type: String, select: false },
+    forgotPasswordEmailExpiration: { type: Date, select: false },
+    forgotPasswordToken: { type: String, select: false },
   },
   { timestamps: true }
 );

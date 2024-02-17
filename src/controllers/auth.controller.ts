@@ -243,32 +243,50 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 export const updatePassword = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { password, token } = req.body;
 
-  if (!email || !password) {
+  if (!password) {
     return res.status(400).json({
       status: "An error occured",
       message: "Incomplete Credentials",
     });
   }
 
+  if (!token) {
+    return res.status(400).json({
+      status: "Error",
+      message: "Update user password failed",
+    });
+  }
+
   try {
-    // fetch user data from db
-    const user = await User.findOne({ email });
+    // hash user password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // find user if the forgotPasswordToken matches with the one in db
+    // and if forgotPasswordEmailExpiration is less than 30 minutes
+
+    // if all conditions are true, update the db
+    const user = await User.findOneAndUpdate(
+      {
+        forgotPasswordToken: token,
+        forgotPasswordEmailExpiration: { $gt: Date.now() },
+      },
+      {
+        forgotPasswordToken: "",
+        forgotPasswordEmailExpiration: "",
+        password: hashedPassword,
+      },
+      { returnOriginal: false }
+    );
 
     // check if user doesn't exist
     if (!user) {
       return res.status(400).json({
         status: "An error occured",
-        message: "User doesn't exist!",
+        message: "User doesn't exist! Update user password failed",
       });
     }
-
-    // hash user password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // update password field
-    await User.findOneAndUpdate({ email }, { password: hashedPassword });
 
     return res.status(200).json({
       status: "Successful",
@@ -291,6 +309,7 @@ export const logout = async (req: Request, res: Response) => {
     httpOnly: isProduction ? true : false,
     path: "/",
     sameSite: isProduction ? "none" : "lax",
+    maxAge: -1,
   });
 
   res.clearCookie("refresh-token", {
@@ -298,6 +317,7 @@ export const logout = async (req: Request, res: Response) => {
     httpOnly: isProduction ? true : false,
     path: "/",
     sameSite: isProduction ? "none" : "lax",
+    maxAge: -1,
   });
 
   return res.status(200).json({

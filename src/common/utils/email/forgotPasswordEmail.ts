@@ -26,9 +26,8 @@ const forgotPasswordEmail = async (
     await User.findOneAndUpdate(
       { email },
       {
-        isVerified: false,
-        verificationToken: token,
-        verificationEmailExpiration: Date.now() + 1800000,
+        forgotPasswordToken: token,
+        forgotPasswordEmailExpiration: Date.now() + 1800000,
       }
     );
 
