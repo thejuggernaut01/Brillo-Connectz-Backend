@@ -7,12 +7,13 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import authRouter from "./routes/auth.route";
-import movieRouter from "./routes/movie.route";
+// import movieRouter from "./routes/movie.route";
 
 const app: Express = express();
 
 app.use(
   cors({
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
   })
 );
@@ -33,6 +34,6 @@ app.get("/", (req, res) => {
 
 app.use("/auth", authRouter);
 
-app.use("/", movieRouter);
+// app.use("/", movieRouter);
 
 export default app;

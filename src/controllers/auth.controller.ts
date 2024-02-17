@@ -282,6 +282,30 @@ export const updatePassword = async (req: Request, res: Response) => {
   }
 };
 
+export const logout = async (req: Request, res: Response) => {
+  // check if in production mode
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.clearCookie("access-token", {
+    secure: isProduction ? true : false,
+    httpOnly: isProduction ? true : false,
+    path: "/",
+    sameSite: isProduction ? "none" : "lax",
+  });
+
+  res.clearCookie("refresh-token", {
+    secure: isProduction ? true : false,
+    httpOnly: isProduction ? true : false,
+    path: "/",
+    sameSite: isProduction ? "none" : "lax",
+  });
+
+  return res.status(200).json({
+    status: "Success",
+    message: "User successfully logged out",
+  });
+};
+
 export const protect = async (
   req: Request,
   res: Response,
@@ -365,7 +389,7 @@ export const protect = async (
           const isProduction = process.env.NODE_ENV === "production";
 
           // store token (access & refresh)
-          res.cookie("access-token", accessToken, {
+          return res.cookie("access-token", accessToken, {
             secure: isProduction ? true : false,
             httpOnly: isProduction ? true : false,
             path: "/",
