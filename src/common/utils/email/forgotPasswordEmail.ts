@@ -5,11 +5,7 @@ import { smtpexpressClient } from "../../config/emailConfig";
 import { forgotPasswordEmailTemplate } from "../../templates/forgotPasswordEmail";
 import User from "../../../models/user.model";
 
-const forgotPasswordEmail = async (
-  email: string,
-  redirectUrl: string,
-  res: Response
-) => {
+const forgotPasswordEmail = async (email: string, res: Response) => {
   // generate verification token and save user to the database with isVerified set to false
   crypto.randomBytes(32, async (err: Error, buffer: any) => {
     if (err) {
@@ -33,7 +29,7 @@ const forgotPasswordEmail = async (
 
     const response = await smtpexpressClient.sendApi.sendMail({
       subject: "Password Reset - Brillo Connectz Football",
-      message: forgotPasswordEmailTemplate(token, redirectUrl),
+      message: forgotPasswordEmailTemplate(token),
       sender: {
         name: "Brillo Football",
         email: process.env.SMTP_SENDER_ADDRESS,

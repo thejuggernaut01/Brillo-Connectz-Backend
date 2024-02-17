@@ -8,6 +8,8 @@ import verificationEmail from "../common/utils/email/verificationEmail";
 import welcomeEmail from "../common/utils/email/welcomeEmail";
 import forgotPasswordEmail from "../common/utils/email/forgotPasswordEmail";
 
+import { CustomRequest } from "../common/interfaces/authInterface";
+
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
 
@@ -216,10 +218,10 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email, redirectUrl } = req.body;
+  const { email } = req.body;
 
   try {
-    if (!email || !redirectUrl) {
+    if (!email) {
       return res.status(400).json({
         status: "Error",
         message: "Incomplete credentials!",
@@ -227,7 +229,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
 
     // send forgot password email
-    await forgotPasswordEmail(email, redirectUrl, res);
+    await forgotPasswordEmail(email, res);
 
     return res.status(200).json({
       status: "Successful",
@@ -327,7 +329,7 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 export const protect = async (
-  req: Request,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ): Promise<Response | void> => {
@@ -376,7 +378,9 @@ export const protect = async (
     // verify access token
     const decoded = jwt.verify(accessToken, ACCESS_TOKEN_SECRET) as DecodedType;
 
-    await handleDecoded(decoded);
+    const currentUser = await handleDecoded(decoded);
+
+    req.user = currentUser;
   } catch (error) {
     //  if error in verifying access token
     const castedError = error as Error;
@@ -392,6 +396,9 @@ export const protect = async (
         ) as DecodedType;
 
         const decodedUser = await handleDecoded(decoded);
+        console.log("Decoded", decodedUser);
+
+        req.user = decodedUser;
 
         if (decodedUser && "_id" in decodedUser) {
           const currentUser = decodedUser;
