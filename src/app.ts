@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import authRouter from "./routes/auth.route";
+import profileRouter from "./routes/profile.route";
 import settingsRouter from "./routes/settings.route";
 
 const app: Express = express();
@@ -33,8 +34,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/profile", profileRouter);
 app.use("/settings", settingsRouter);
-
-// app.use("/", movieRouter);
 
 export default app;

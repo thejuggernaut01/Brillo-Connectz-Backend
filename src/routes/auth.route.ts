@@ -10,16 +10,29 @@ import {
   updatePassword,
   logout,
 } from "../controllers/auth.controller";
+import validate from "../common/schemas/validate";
+import {
+  forgotPasswordSchema,
+  createAccountSchema,
+  resendEmailSchema,
+  verifyEmailSchema,
+  updatePasswordSchema,
+  loginSchema,
+} from "../common/schemas/auth/authSchema";
 
 const router = express.Router();
 
-router.post("/create", create);
-router.post("/resend-email", resendEmail);
-router.post("/verify-email", verifyEmail);
-router.post("/forgot-password", forgotPassword);
-router.patch("/update-password", updatePassword);
+router.post("/create", validate(createAccountSchema), create);
+router.post("/resend-email", validate(resendEmailSchema), resendEmail);
+router.post("/verify-email", validate(verifyEmailSchema), verifyEmail);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.patch(
+  "/update-password",
+  validate(updatePasswordSchema),
+  updatePassword
+);
 
-router.post("/login", login);
+router.post("/login", validate(loginSchema), login);
 router.post("/logout", logout);
 router.use(protect);
 
