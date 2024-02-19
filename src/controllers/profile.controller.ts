@@ -3,7 +3,7 @@ import User from "../models/user.model";
 import { CustomRequest } from "../common/interfaces/authInterface";
 
 export const getProfile = async (req: CustomRequest, res: Response) => {
-  const currentUserId = req.user?._doc?._id;
+  const currentUserId = req.user?._id;
 
   try {
     const user = await User.findOne({ _id: currentUserId });

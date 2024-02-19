@@ -16,7 +16,7 @@ export const changePassword = async (req: CustomRequest, res: Response) => {
   }
 
   // current user id
-  const currentUserId = req.user?._doc?._id;
+  const currentUserId = req.user?._id;
   try {
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -50,7 +50,7 @@ export const updateUsername = async (req: CustomRequest, res: Response) => {
     });
   }
 
-  const currentUserId = req.user?._doc?._id;
+  const currentUserId = req.user?._id;
 
   try {
     await User.findOneAndUpdate(
@@ -83,7 +83,7 @@ export const updateEmail = async (req: CustomRequest, res: Response) => {
     });
   }
 
-  const currentUserId = req.user?._doc?._id;
+  const currentUserId = req.user?._id;
 
   try {
     await User.findOneAndUpdate(
