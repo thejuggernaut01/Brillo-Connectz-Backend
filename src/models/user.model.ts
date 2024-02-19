@@ -17,10 +17,15 @@ const UserSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       select: false,
     },
+    interest: {
+      type: [String],
+      required: [true, "Password is required"],
+    },
     username: String,
 
     refreshToken: { type: String, select: false },
     isVerified: { type: Boolean },
+
     verificationEmailExpiration: { type: Date, select: false },
     verificationToken: { type: String, select: false },
     forgotPasswordEmailExpiration: { type: Date, select: false },

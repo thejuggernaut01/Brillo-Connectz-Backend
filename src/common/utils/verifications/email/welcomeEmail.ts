@@ -1,5 +1,5 @@
-import { smtpexpressClient } from "../../config/emailConfig";
-import { welcomeEmailTemplate } from "./../../templates/welcomeEmail";
+import { smtpexpressClient } from "../../../config/emailConfig";
+import { welcomeEmailTemplate } from "../../../templates/welcomeEmail";
 
 const welcomeEmail = async (email: string) => {
   const response = await smtpexpressClient.sendApi.sendMail({

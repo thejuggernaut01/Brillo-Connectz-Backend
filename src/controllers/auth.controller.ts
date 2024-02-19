@@ -4,9 +4,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import User from "../models/user.model";
-import verificationEmail from "../common/utils/email/verificationEmail";
-import welcomeEmail from "../common/utils/email/welcomeEmail";
-import forgotPasswordEmail from "../common/utils/email/forgotPasswordEmail";
+import verificationEmail from "../common/utils/verifications/email/verificationEmail";
+import welcomeEmail from "../common/utils/verifications/email/welcomeEmail";
+import forgotPasswordEmail from "../common/utils/verifications/email/forgotPasswordEmail";
 
 import { CustomRequest } from "../common/interfaces/authInterface";
 
@@ -22,9 +22,9 @@ type DecodedType = {
 
 export const create = async (req: Request, res: Response) => {
   try {
-    const { email, phoneNumber, password } = req.body;
+    const { email, phoneNumber, password, interests } = req.body;
 
-    if (!email || !phoneNumber || !password) {
+    if (!email || !phoneNumber || !password || !interests) {
       return res.status(400).json({
         status: "An error occured",
         message: "Incomplete Credentials",
@@ -49,6 +49,7 @@ export const create = async (req: Request, res: Response) => {
       email,
       phoneNumber,
       password: hashedPassword,
+      interests,
     });
 
     // send verification email
@@ -149,72 +150,162 @@ export const resendEmail = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, phoneNumber, password } = req.body;
 
-  if (!email || !password) {
+  if (!password) {
     return res
       .status(400)
       .json({ status: "An error occured", message: "Incomplete Credentials" });
   }
 
-  const user = await User.findOne({ email }).select("+password");
+  // login with email and password
+  if (email) {
+    try {
+      const user = await User.findOne({ email }).select("+password");
 
-  // check if user tries to login with an unverified account
-  // send new verification mail
-  if (!user.isVerified) {
-    await verificationEmail(user.email, res);
+      // check if user tries to login with an unverified account
+      // send new verification mail
+      if (!user.isVerified) {
+        await verificationEmail(user.email, res);
 
-    return res.status(400).json({
-      status: "An error occured",
-      message: "User isn't verified, check email for verification link",
-    });
+        return res.status(400).json({
+          status: "An error occured",
+          message: "User isn't verified, check email for verification link",
+        });
+      }
+
+      // if account is verified
+      // check if the password is correct
+      const match = await bcrypt.compare(password, user.password);
+      if (!user || !match) {
+        return res.status(400).json({
+          status: "An error occured",
+          message: "Email or password is incorrect",
+        });
+      }
+
+      // create tokens (access & refresh)
+      const accessToken = jwt.sign({ _id: user._id }, ACCESS_TOKEN_SECRET, {
+        expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+      });
+
+      const refreshToken = jwt.sign({ _id: user._id }, REFRESH_TOKEN_SECRET, {
+        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+      });
+
+      // update user refresh token
+      await User.findOneAndUpdate({ email: user.email }, { refreshToken });
+
+      // check if in production mode
+      const isProduction = process.env.NODE_ENV === "production";
+
+      // store token (access & refresh)
+      res.cookie("access-token", accessToken, {
+        secure: isProduction ? true : false,
+        httpOnly: isProduction ? true : false,
+        path: "/",
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+
+      res.cookie("refresh-token", refreshToken, {
+        secure: isProduction ? true : false,
+        httpOnly: isProduction ? true : false,
+        path: "/",
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+
+      const { password: _, ...rest } = user.toObject();
+
+      return res
+        .status(200)
+        .json({ message: "Login successfully!", data: rest });
+    } catch (error) {
+      return res.status(500).json({
+        status: "Error",
+        message: "Internal server error",
+      });
+    }
   }
 
-  // if account is verified
-  // check if the password is correct
-  const match = await bcrypt.compare(password, user.password);
-  if (!user || !match) {
-    return res.status(400).json({
-      status: "An error occured",
-      message: "Email or password is incorrect",
-    });
+  // login with phone number and password
+  if (phoneNumber) {
+    try {
+      const user = await User.findOne({ phoneNumber }).select("+password");
+
+      // check if user tries to login with an unverified account
+      // send new verification mail
+      if (!user.isVerified) {
+        await verificationEmail(user.email, res);
+
+        return res.status(400).json({
+          status: "An error occured",
+          message: "User isn't verified, check email for verification link",
+        });
+      }
+
+      // if account is verified
+      // check if the password is correct
+      const match = await bcrypt.compare(password, user.password);
+      if (!user || !match) {
+        return res.status(400).json({
+          status: "An error occured",
+          message: "Phone number or password is incorrect",
+        });
+      }
+
+      // create tokens (access & refresh)
+      const accessToken = jwt.sign({ _id: user._id }, ACCESS_TOKEN_SECRET, {
+        expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+      });
+
+      const refreshToken = jwt.sign({ _id: user._id }, REFRESH_TOKEN_SECRET, {
+        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+      });
+
+      // update user refresh token
+      await User.findOneAndUpdate(
+        { phoneNumber: user.phoneNumber },
+        { refreshToken }
+      );
+
+      // check if in production mode
+      const isProduction = process.env.NODE_ENV === "production";
+
+      // store token (access & refresh)
+      res.cookie("access-token", accessToken, {
+        secure: isProduction ? true : false,
+        httpOnly: isProduction ? true : false,
+        path: "/",
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+
+      res.cookie("refresh-token", refreshToken, {
+        secure: isProduction ? true : false,
+        httpOnly: isProduction ? true : false,
+        path: "/",
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+
+      const { password: _, ...rest } = user.toObject();
+
+      return res
+        .status(200)
+        .json({ message: "Login successfully!", data: rest });
+    } catch (error) {
+      return res.status(500).json({
+        status: "Error",
+        message: "Internal server error",
+      });
+    }
   }
 
-  // create tokens (access & refresh)
-  const accessToken = jwt.sign({ _id: user._id }, ACCESS_TOKEN_SECRET, {
-    expiresIn: ACCESS_TOKEN_EXPIRES_IN,
-  });
-
-  const refreshToken = jwt.sign({ _id: user._id }, REFRESH_TOKEN_SECRET, {
-    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
-  });
-
-  // update user refresh token
-  await User.findOneAndUpdate({ email: user.email }, { refreshToken });
-
-  // check if in production mode
-  const isProduction = process.env.NODE_ENV === "production";
-
-  // store token (access & refresh)
-  res.cookie("access-token", accessToken, {
-    secure: isProduction ? true : false,
-    httpOnly: isProduction ? true : false,
-    path: "/",
-    sameSite: isProduction ? "none" : "lax",
-    maxAge: 15 * 60 * 1000, // 15 minutes
-  });
-
-  res.cookie("refresh-token", refreshToken, {
-    secure: isProduction ? true : false,
-    httpOnly: isProduction ? true : false,
-    path: "/",
-    sameSite: isProduction ? "none" : "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  });
-
-  const { password: _, ...rest } = user.toObject();
-
-  return res.status(200).json({ message: "Login successfully!", data: rest });
+  return res
+    .status(400)
+    .json({ status: "An error occured", message: "Incomplete Credentials" });
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
@@ -302,30 +393,41 @@ export const updatePassword = async (req: Request, res: Response) => {
   }
 };
 
-export const logout = async (req: Request, res: Response) => {
-  // check if in production mode
-  const isProduction = process.env.NODE_ENV === "production";
+export const logout = async (req: CustomRequest, res: Response) => {
+  const currentUserId = req.user?._doc?._id;
 
-  res.clearCookie("access-token", {
-    secure: isProduction ? true : false,
-    httpOnly: isProduction ? true : false,
-    path: "/",
-    sameSite: isProduction ? "none" : "lax",
-    maxAge: -1,
-  });
+  try {
+    await User.findOneAndUpdate({ _id: currentUserId }, { refreshToken: "" });
 
-  res.clearCookie("refresh-token", {
-    secure: isProduction ? true : false,
-    httpOnly: isProduction ? true : false,
-    path: "/",
-    sameSite: isProduction ? "none" : "lax",
-    maxAge: -1,
-  });
+    // check if in production mode
+    const isProduction = process.env.NODE_ENV === "production";
 
-  return res.status(200).json({
-    status: "Success",
-    message: "User successfully logged out",
-  });
+    res.clearCookie("access-token", {
+      secure: isProduction ? true : false,
+      httpOnly: isProduction ? true : false,
+      path: "/",
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: -1,
+    });
+
+    res.clearCookie("refresh-token", {
+      secure: isProduction ? true : false,
+      httpOnly: isProduction ? true : false,
+      path: "/",
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: -1,
+    });
+
+    return res.status(200).json({
+      status: "Success",
+      message: "User successfully logged out",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "Error",
+      message: "Internal server error",
+    });
+  }
 };
 
 export const protect = async (
