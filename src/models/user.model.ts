@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       select: false,
     },
-    interest: {
+    interests: {
       type: [String],
       required: [true, "Password is required"],
     },
