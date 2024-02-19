@@ -498,7 +498,6 @@ export const protect = async (
         ) as DecodedType;
 
         const decodedUser = await handleDecoded(decoded);
-        console.log("Decoded", decodedUser);
 
         req.user = decodedUser;
 

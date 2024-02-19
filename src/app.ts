@@ -34,7 +34,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRouter);
-// app.use("/profile", profileRouter);
+app.use("/profile", profileRouter);
 app.use("/settings", settingsRouter);
 
 export default app;
